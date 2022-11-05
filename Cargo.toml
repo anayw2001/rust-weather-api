@@ -11,6 +11,7 @@ protobuf = "3.2.0"
 reqwest = "0.11.12"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_json = "1.0.87"
+surrealdb = "1.0.0-beta.8"
 
 [build-dependencies]
 protobuf-codegen = "3.2.0"

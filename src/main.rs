@@ -4,6 +4,10 @@ mod math;
 use actix_web::{get, web, App, HttpServer, Responder};
 use serde::Deserialize;
 use std::fs;
+use std::path::Path;
+
+const DB_PATH: &str = "weathurber.db";
+const DB_PATH_FILE: &str = "file://weathurber.db";
 
 mod weather_proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
@@ -42,6 +46,11 @@ async fn main() -> std::io::Result<()> {
     let owm_credentials_raw = fs::read_to_string("creds.json").expect("No creds.json file found.");
     let owm_key: APIKey = serde_json::from_str(&owm_credentials_raw).expect("bad json");
     println!("owm_api_key: {owm_key:?}");
+    if !Path::exists(Path::new(DB_PATH)) {
+        let _ = surrealdb::Datastore::new(DB_PATH_FILE).await.map_err(|_| {
+            std::io::Error::new(std::io::ErrorKind::Other, "unable to create datastore")
+        })?;
+    }
     HttpServer::new(|| {
         App::new()
             .route("/hello", web::get().to(|| async { "Hello World!" }))
