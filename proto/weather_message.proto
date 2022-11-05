@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.statix.weathurber;
+
+enum Conditions {
+ RAINY = 0;
+ CLOUDY = 1;
+ SUNNY = 2;
+ SNOW = 3;
+ OVERCAST = 4;
+}
+
+message OneDayForecast {
+  int32 low_temp = 1;
+  int32 high_temp = 2;
+  // rain, sunny, cloudy, etc.
+  Conditions condition = 3;
+  string date = 4;
+}
+
+message WeatherInfo {
+  repeated OneDayForecast forecasts = 1;
+  int32 aqi = 2;
+}
