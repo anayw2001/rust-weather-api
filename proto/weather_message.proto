@@ -15,13 +15,13 @@ message OneDayForecast {
   int32 high_temp = 2;
   // rain, sunny, cloudy, etc.
   Conditions condition = 3;
-  string date = 4;
+  int64 time = 4;
 }
 
 message HourlyWeather {
   int32 temp = 1;
   Conditions condition = 2;
-  string hour = 3;
+  int64 time = 3;
 }
 
 message WeatherInfo {
