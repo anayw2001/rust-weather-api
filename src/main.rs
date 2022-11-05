@@ -5,6 +5,10 @@ use actix_web::{get, web, App, HttpServer, Responder};
 use serde::Deserialize;
 use std::fs;
 
+mod weather_proto {
+    include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
+}
+
 struct Location {
     latitude: f64,
     longitude: f64,
