@@ -18,7 +18,16 @@ message OneDayForecast {
   string date = 4;
 }
 
+message HourlyWeather {
+  int32 temp = 1;
+  Conditions condition = 2;
+  string hour = 3;
+}
+
 message WeatherInfo {
   repeated OneDayForecast forecasts = 1;
-  int32 aqi = 2;
+  repeated HourlyWeather hour_forecasts = 2;
+  int32 aqi = 3;
+  int32 wind_speed = 4;
+  string weather_alerts = 5;
 }
