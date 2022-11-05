@@ -2760,6 +2760,8 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sha2 0.10.6",
+ "subtle",
  "surrealdb",
 ]
 
