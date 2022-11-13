@@ -3,31 +3,34 @@ syntax = "proto3";
 package com.statix.weathurber;
 
 enum Conditions {
- RAINY = 0;
- CLOUDY = 1;
- SUNNY = 2;
- SNOW = 3;
- OVERCAST = 4;
+ UNKNOWN = 0;
+ RAINY = 1;
+ CLOUDY = 2;
+ CLEAR = 3;
+ SNOW = 4;
+ OVERCAST = 5;
+ STORM = 6;
 }
 
 message OneDayForecast {
-  int32 low_temp = 1;
-  int32 high_temp = 2;
+  double low_temp = 1;
+  double high_temp = 2;
   // rain, sunny, cloudy, etc.
   Conditions condition = 3;
   int64 time = 4;
 }
 
 message HourlyWeather {
-  int32 temp = 1;
-  Conditions condition = 2;
-  int64 time = 3;
+  double temp = 1;
+  double feels_like = 2;
+  Conditions condition = 3;
+  int64 time = 4;
 }
 
 message WeatherInfo {
   repeated OneDayForecast forecasts = 1;
   repeated HourlyWeather hour_forecasts = 2;
   int32 aqi = 3;
-  int32 wind_speed = 4;
+  float wind_speed = 4;
   string weather_alerts = 5;
 }

@@ -1,17 +1,24 @@
-mod database_utils;
+#![feature(future_join)]
+
+// mod database_utils;
+mod data_types;
 mod math;
 
+use crate::data_types::{Conditions, ProtoAdapter as _};
+
 use actix_web::{get, web, App, HttpServer, Responder};
+use lazy_static::lazy_static;
 use reqwest::StatusCode;
 use serde::Deserialize;
+use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read as _};
 use subtle::ConstantTimeEq as _;
-
-const DB_PATH: &str = "weathurber.db";
+use surrealdb::Session;
 
 mod weather_proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
@@ -23,17 +30,17 @@ struct Location {
 }
 
 enum Units {
-    METRIC,
-    IMPERIAL,
-    STANDARD,
+    Metric,
+    Imperial,
+    Standard,
 }
 
 impl Display for Units {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Units::METRIC => f.write_str("metric"),
-            Units::IMPERIAL => f.write_str("imperial"),
-            Units::STANDARD => f.write_str("standard"),
+            Units::Metric => f.write_str("metric"),
+            Units::Imperial => f.write_str("imperial"),
+            Units::Standard => f.write_str("standard"),
         }
     }
 }
@@ -41,9 +48,9 @@ impl Display for Units {
 impl From<String> for Units {
     fn from(unit: String) -> Self {
         match unit.as_str() {
-            "metric" => Units::METRIC,
-            "imperial" => Units::IMPERIAL,
-            _ => Units::STANDARD,
+            "metric" => Units::Metric,
+            "imperial" => Units::Imperial,
+            _ => Units::Standard,
         }
     }
 }
@@ -53,7 +60,25 @@ struct APIKey {
     owm_key: String,
 }
 
-async fn do_weather_query(keys: APIKey, location: Location, units: Units) {
+fn convert_id_to_condition(current_weather_id: i64) -> Conditions {
+    if current_weather_id == 800 {
+        Conditions::Clear
+    } else if current_weather_id > 800 && current_weather_id < 805 {
+        if current_weather_id == 804 {
+            Conditions::Overcast
+        } else {
+            Conditions::Cloudy
+        }
+    } else if current_weather_id > 599 && current_weather_id < 700 {
+        Conditions::Snow
+    } else if current_weather_id > 199 && current_weather_id < 300 {
+        Conditions::Storm
+    } else {
+        Conditions::Rainy
+    }
+}
+
+async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> String {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
             "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&appid={}&units={}",
@@ -62,14 +87,58 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) {
         let result = reqwest::get(owm_query).await;
         if result.is_err() {
             // Our request failed for some reason, we will try again later.
-            return;
+            return "request failed 1".to_string();
         }
         let response = result.unwrap();
-        if StatusCode::is_success(&response.status()) {
+        if !StatusCode::is_success(&response.status()) {
             // Our request failed for some reason, we will try again later.
-            return;
+            return format!("request failed with statuscode: {}", &response.status());
         }
+        let response_mapping: HashMap<String, Value> = response.json().await.unwrap();
+        eprintln!(
+            "current weather: {}",
+            response_mapping.get("current").unwrap()
+        );
+        let current_weather_mapping: HashMap<String, Value> = serde_json::from_str(
+            response_mapping
+                .get("current")
+                .unwrap()
+                .to_string()
+                .as_str(),
+        )
+        .unwrap();
+        let current_condition = {
+            // Reference: https://openweathermap.org/weather-conditions#Weather-Condition-Codes-2
+            let current_weather_weather: HashMap<String, Value> = serde_json::from_value(
+                current_weather_mapping
+                    .get("weather")
+                    .unwrap()
+                    .as_array()
+                    .unwrap()[0]
+                    .clone(),
+            )
+            .unwrap();
+            let current_weather_id = current_weather_weather.get("id").unwrap().as_i64().unwrap();
+            convert_id_to_condition(current_weather_id)
+        };
+        let current_weather = data_types::HourlyWeather {
+            temp: current_weather_mapping
+                .get("temp")
+                .unwrap()
+                .as_f64()
+                .unwrap(),
+            feels_like: current_weather_mapping
+                .get("feels_like")
+                .unwrap()
+                .as_f64()
+                .unwrap(),
+            time: current_weather_mapping.get("dt").unwrap().as_i64().unwrap(),
+            condition: current_condition,
+        }
+        .to_proto();
+        return current_weather.to_string();
     }
+    "no key".to_string()
 }
 
 fn get_credential_digest() -> Vec<u8> {
@@ -89,19 +158,17 @@ fn get_credential_digest() -> Vec<u8> {
 
 async fn get_api_key_from_json() -> APIKey {
     // Confirm that creds.json has not been modified, otherwise panic
-    let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str())
-        .await
-        .expect("unable to create datastore");
-    let mut transaction = ds.transaction(false, false).await.unwrap();
+    // let ds =
+    // let mut transaction = ds.transaction(false, false).await.unwrap();
     // Should have been created in main()
-    let stored_digest = transaction.get("credential_sha").await.unwrap().unwrap();
-    let current_digest = get_credential_digest();
-    if stored_digest.ct_eq(current_digest.as_slice()).into() {
-        // Load openweathermap api key.
-        let credentials_raw = fs::read_to_string("creds.json").expect("No creds.json file found.");
-        serde_json::from_str(&credentials_raw).expect("bad json")
-    }
-    panic!("Credentials may have been modified while this API was running! Check for attackers!")
+    // let stored_digest = transaction.get("credential_sha").await.unwrap().unwrap();
+    // let current_digest = get_credential_digest();
+    // if stored_digest.ct_eq(current_digest.as_slice()).into() {
+    // Load openweathermap api key.
+    let credentials_raw = fs::read_to_string("creds.json").expect("No creds.json file found.");
+    serde_json::from_str(&credentials_raw).expect("bad json")
+    // }
+    // panic!("Credentials may have been modified while this API was running! Check for attackers!")
 }
 
 #[get("/hello/{name}")]
@@ -120,7 +187,7 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
     // if not, query owm and store the result of the api call in the db, then return the information
     // the client needs.
     let keys = get_api_key_from_json().await;
-    do_weather_query(
+    let full_proto_response = do_weather_query(
         keys,
         Location {
             latitude: lat,
@@ -129,29 +196,37 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
         units,
     )
     .await;
-    format!("Latitude: {lat}, Longitude {long}")
+    // let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str()).await;
+    // if ds.is_err() {
+    //     return Response::new(StatusCode::EXPECTATION_FAILED);
+    // }
+    // let store = ds.unwrap();
+    // let session = Session::for_kv();
+    // let statement = "SELECT * FROM locations";
+    // let res = store.execute(statement, &session, None, false);
+    full_proto_response
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Store the SHA-256 hash of creds.json into the database so that we don't run into an issue
     // where an attacker can introduce a TOCTOU vuln.
-    let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str())
-        .await
-        .map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "unable to create datastore")
-        })?;
-    let mut transaction = ds
-        .transaction(true, true)
-        .await
-        .expect("unable to start transaction");
-    // SHA-256 of creds.json
-    let digest = get_credential_digest();
-    transaction
-        .set("credential_sha", digest.as_slice())
-        .await
-        .expect("failed to write hash to store");
-    transaction.commit().await.expect("failed to commit");
+    // let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str())
+    //     .await
+    //     .map_err(|_| {
+    //         std::io::Error::new(std::io::ErrorKind::Other, "unable to create datastore")
+    //     })?;
+    // let mut transaction = ds
+    //     .transaction(true, true)
+    //     .await
+    //     .expect("unable to start transaction");
+    // // SHA-256 of creds.json
+    // let digest = get_credential_digest();
+    // transaction
+    //     .set("credential_sha", digest.as_slice())
+    //     .await
+    //     .expect("failed to write hash to store");
+    // transaction.commit().await.expect("failed to commit");
     HttpServer::new(|| {
         App::new()
             .route("/hello", web::get().to(|| async { "Hello World!" }))

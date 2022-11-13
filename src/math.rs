@@ -2,7 +2,7 @@ use crate::Location;
 
 const EARTH_RADIUS_KM: f64 = 6371_f64;
 
-/// Returns distance in kilometeres between location1 and location2, which represent
+/// Returns distance in kilometers between location1 and location2, which represent
 /// latitude and longitude coordinates of two points on Earth.
 pub(crate) fn haversine(location1: Location, location2: Location) -> f64 {
     let location1_lat_radians = location1.latitude.to_radians();
