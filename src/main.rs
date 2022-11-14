@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::fs::File;
+use std::hash::Hash;
 use std::io::{BufReader, Read as _};
 use subtle::ConstantTimeEq as _;
 use surrealdb::Session;
@@ -78,6 +79,39 @@ fn convert_id_to_condition(current_weather_id: i64) -> Conditions {
     }
 }
 
+fn process_current_weather(
+    current_weather_mapping: HashMap<String, Value>,
+) -> data_types::HourlyWeather {
+    let current_condition = {
+        // Reference: https://openweathermap.org/weather-conditions#Weather-Condition-Codes-2
+        let current_weather_weather: HashMap<String, Value> = serde_json::from_value(
+            current_weather_mapping
+                .get("weather")
+                .unwrap()
+                .as_array()
+                .unwrap()[0]
+                .clone(),
+        )
+        .unwrap();
+        let current_weather_id = current_weather_weather.get("id").unwrap().as_i64().unwrap();
+        convert_id_to_condition(current_weather_id)
+    };
+    data_types::HourlyWeather {
+        temp: current_weather_mapping
+            .get("temp")
+            .unwrap()
+            .as_f64()
+            .unwrap(),
+        feels_like: current_weather_mapping
+            .get("feels_like")
+            .unwrap()
+            .as_f64()
+            .unwrap(),
+        time: current_weather_mapping.get("dt").unwrap().as_i64().unwrap(),
+        condition: current_condition,
+    }
+}
+
 async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> String {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
@@ -107,36 +141,8 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
                 .as_str(),
         )
         .unwrap();
-        let current_condition = {
-            // Reference: https://openweathermap.org/weather-conditions#Weather-Condition-Codes-2
-            let current_weather_weather: HashMap<String, Value> = serde_json::from_value(
-                current_weather_mapping
-                    .get("weather")
-                    .unwrap()
-                    .as_array()
-                    .unwrap()[0]
-                    .clone(),
-            )
-            .unwrap();
-            let current_weather_id = current_weather_weather.get("id").unwrap().as_i64().unwrap();
-            convert_id_to_condition(current_weather_id)
-        };
-        let current_weather = data_types::HourlyWeather {
-            temp: current_weather_mapping
-                .get("temp")
-                .unwrap()
-                .as_f64()
-                .unwrap(),
-            feels_like: current_weather_mapping
-                .get("feels_like")
-                .unwrap()
-                .as_f64()
-                .unwrap(),
-            time: current_weather_mapping.get("dt").unwrap().as_i64().unwrap(),
-            condition: current_condition,
-        }
-        .to_proto();
-        return current_weather.to_string();
+        let current_weather = process_current_weather(current_weather_mapping);
+        return current_weather.to_proto().to_string();
     }
     "no key".to_string()
 }
