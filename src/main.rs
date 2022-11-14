@@ -6,8 +6,11 @@ mod math;
 
 use crate::data_types::{Conditions, ProtoAdapter as _};
 
+use crate::weather_proto::weather_message;
+use actix_web::cookie::time::format_description::modifier::Hour;
 use actix_web::{get, web, App, HttpServer, Responder};
 use lazy_static::lazy_static;
+use protobuf::MessageField;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
@@ -112,6 +115,16 @@ fn process_current_weather(
     }
 }
 
+fn process_hourly_weather(
+    hourly_weather_mapping: Vec<HashMap<String, Value>>,
+) -> Vec<data_types::HourlyWeather> {
+    let mut result = vec![];
+    for hourly_weather in hourly_weather_mapping {
+        result.push(process_current_weather(hourly_weather));
+    }
+    result
+}
+
 async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> String {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
@@ -142,7 +155,15 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
         )
         .unwrap();
         let current_weather = process_current_weather(current_weather_mapping);
-        return current_weather.to_proto().to_string();
+        let hourly_weather_mapping =
+            serde_json::from_value(response_mapping.get("hourly").unwrap().clone()).unwrap();
+        let hourly_weather = process_hourly_weather(hourly_weather_mapping);
+        let final_weather = weather_message::WeatherInfo {
+            hour_forecasts: hourly_weather.iter().map(|w| w.to_proto()).collect(),
+            current_weather: Some(current_weather.to_proto()).into(),
+            ..Default::default()
+        };
+        return final_weather.to_string();
     }
     "no key".to_string()
 }

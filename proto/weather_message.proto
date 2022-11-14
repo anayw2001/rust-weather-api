@@ -28,9 +28,10 @@ message HourlyWeather {
 }
 
 message WeatherInfo {
-  repeated OneDayForecast forecasts = 1;
-  repeated HourlyWeather hour_forecasts = 2;
-  int32 aqi = 3;
-  float wind_speed = 4;
-  string weather_alerts = 5;
+  HourlyWeather current_weather = 1;
+  repeated OneDayForecast forecasts = 2;
+  repeated HourlyWeather hour_forecasts = 3;
+  int32 aqi = 4;
+  float wind_speed = 5;
+  string weather_alerts = 6;
 }
