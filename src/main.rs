@@ -122,6 +122,7 @@ fn process_hourly_weather(
     for hourly_weather in hourly_weather_mapping {
         result.push(process_current_weather(hourly_weather));
     }
+    result.sort_by(|e, e2| e.time.partial_cmp(&e2.time).unwrap());
     result
 }
 
