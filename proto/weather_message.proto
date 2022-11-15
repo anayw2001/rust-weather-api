@@ -18,6 +18,8 @@ message OneDayForecast {
   // rain, sunny, cloudy, etc.
   Conditions condition = 3;
   int64 time = 4;
+  int64 sunrise = 5;
+  int64 sunset = 6;
 }
 
 message HourlyWeather {

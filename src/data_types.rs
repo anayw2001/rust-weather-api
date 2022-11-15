@@ -38,6 +38,8 @@ pub(crate) struct OneDayForecast {
     pub(crate) low_temp: f64,
     pub(crate) condition: Conditions,
     pub(crate) time: i64,
+    pub(crate) sunrise: i64,
+    pub(crate) sunset: i64,
 }
 
 impl ProtoAdapter for OneDayForecast {
@@ -49,6 +51,8 @@ impl ProtoAdapter for OneDayForecast {
             low_temp: self.low_temp,
             condition: self.condition.to_proto(),
             time: self.time,
+            sunrise: self.sunrise,
+            sunset: self.sunset,
             ..Default::default()
         }
     }
