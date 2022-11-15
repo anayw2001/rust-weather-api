@@ -33,11 +33,11 @@ impl ProtoAdapter for Conditions {
     }
 }
 
-struct OneDayForecast {
-    high_temp: f64,
-    low_temp: f64,
-    condition: Conditions,
-    time: i64,
+pub(crate) struct OneDayForecast {
+    pub(crate) high_temp: f64,
+    pub(crate) low_temp: f64,
+    pub(crate) condition: Conditions,
+    pub(crate) time: i64,
 }
 
 impl ProtoAdapter for OneDayForecast {

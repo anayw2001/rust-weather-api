@@ -126,6 +126,34 @@ fn process_hourly_weather(
     result
 }
 
+fn process_daily_weather(
+    daily_weather_mapping: Vec<HashMap<String, Value>>,
+) -> Vec<data_types::OneDayForecast> {
+    let mut result = vec![];
+    for daily_weather in daily_weather_mapping {
+        let temp_mapping: HashMap<String, f64> =
+            serde_json::from_value(daily_weather.get("temp").unwrap().clone()).unwrap();
+        let high_temp = *temp_mapping.get("max").unwrap();
+        let low_temp = *temp_mapping.get("min").unwrap();
+        let current_condition = {
+            // Reference: https://openweathermap.org/weather-conditions#Weather-Condition-Codes-2
+            let current_weather_weather: HashMap<String, Value> = serde_json::from_value(
+                daily_weather.get("weather").unwrap().as_array().unwrap()[0].clone(),
+            )
+            .unwrap();
+            let current_weather_id = current_weather_weather.get("id").unwrap().as_i64().unwrap();
+            convert_id_to_condition(current_weather_id)
+        };
+        result.push(data_types::OneDayForecast {
+            high_temp,
+            low_temp,
+            condition: current_condition,
+            time: daily_weather.get("dt").unwrap().as_i64().unwrap(),
+        })
+    }
+    result
+}
+
 async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> String {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
@@ -159,9 +187,13 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
         let hourly_weather_mapping =
             serde_json::from_value(response_mapping.get("hourly").unwrap().clone()).unwrap();
         let hourly_weather = process_hourly_weather(hourly_weather_mapping);
+        let daily_weather_mapping =
+            serde_json::from_value(response_mapping.get("daily").unwrap().clone()).unwrap();
+        let daily_weather = process_daily_weather(daily_weather_mapping);
         let final_weather = weather_message::WeatherInfo {
             hour_forecasts: hourly_weather.iter().map(|w| w.to_proto()).collect(),
             current_weather: Some(current_weather.to_proto()).into(),
+            forecasts: daily_weather.iter().map(|w| w.to_proto()).collect(),
             ..Default::default()
         };
         return final_weather.to_string();
