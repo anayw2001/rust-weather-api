@@ -7,10 +7,7 @@ mod math;
 use crate::data_types::{Conditions, ProtoAdapter as _};
 
 use crate::weather_proto::weather_message;
-use actix_web::cookie::time::format_description::modifier::Hour;
 use actix_web::{get, web, App, HttpServer, Responder};
-use lazy_static::lazy_static;
-use protobuf::MessageField;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,10 +16,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::fs::File;
-use std::hash::Hash;
 use std::io::{BufReader, Read as _};
-use subtle::ConstantTimeEq as _;
-use surrealdb::Session;
 
 mod weather_proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
