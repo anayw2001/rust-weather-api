@@ -3,3 +3,9 @@
 .idea
 creds.json
 *.db
+
+# Project files
+.settings
+.idea
+.vscode
+.fleet/

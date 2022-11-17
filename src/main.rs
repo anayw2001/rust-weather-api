@@ -1,5 +1,3 @@
-#![feature(future_join)]
-
 // mod database_utils;
 mod data_types;
 mod math;
@@ -289,7 +287,7 @@ async fn main() -> std::io::Result<()> {
             .service(greet)
             .service(parse_lat_long)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }
