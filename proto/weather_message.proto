@@ -33,7 +33,7 @@ message WeatherInfo {
   HourlyWeather current_weather = 1;
   repeated OneDayForecast forecasts = 2;
   repeated HourlyWeather hour_forecasts = 3;
-  int32 aqi = 4;
+  string aqi = 4;
   float wind_speed = 5;
   string weather_alerts = 6;
 }

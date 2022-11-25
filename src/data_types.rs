@@ -82,7 +82,7 @@ impl ProtoAdapter for HourlyWeather {
 struct WeatherInfo {
     forecasts: Vec<OneDayForecast>,
     hour_forecasts: Vec<HourlyWeather>,
-    aqi: i32,
+    aqi: String,
     wind_speed: f32,
     weather_alerts: String,
 }
@@ -94,7 +94,7 @@ impl ProtoAdapter for WeatherInfo {
         weather_message::WeatherInfo {
             forecasts: self.forecasts.iter().map(|x| x.to_proto()).collect(),
             hour_forecasts: self.hour_forecasts.iter().map(|x| x.to_proto()).collect(),
-            aqi: self.aqi,
+            aqi: self.aqi.clone(),
             wind_speed: self.wind_speed,
             weather_alerts: self.weather_alerts.clone(),
             ..Default::default()
