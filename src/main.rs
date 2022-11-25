@@ -148,6 +148,29 @@ fn process_daily_weather(
     result
 }
 
+async fn do_aqi_query(keys: APIKey, location: Location) -> i32 {
+    if !keys.owm_key.is_empty() {
+        let owm_query = format!(
+            "https://api.openweathermap.org/data/2.5/air_pollution?lat={}&lon={}&appid={}",
+            location.latitude, location.longitude, keys.owm_key
+        );
+        let result = reqwest::get(owm_query).await;
+        if let Ok(response) = result {
+            // Our request failed for some reason, we will try again later.
+            let response_mapping: HashMap<String, Value> = response.json().await.unwrap();
+            let response_list: Vec<HashMap<String, Value>> =
+                serde_json::from_value(response_mapping.get("list").unwrap().clone()).unwrap();
+            let main: HashMap<String, i32> =
+                serde_json::from_value(response_list[0].get("main").unwrap().clone()).unwrap();
+            *main.get("aqi").unwrap()
+        } else {
+            -1
+        }
+    } else {
+        -1
+    }
+}
+
 async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> String {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
@@ -188,6 +211,7 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
             hour_forecasts: hourly_weather.iter().map(|w| w.to_proto()).collect(),
             current_weather: Some(current_weather.to_proto()).into(),
             forecasts: daily_weather.iter().map(|w| w.to_proto()).collect(),
+            aqi: do_aqi_query(keys, location).await,
             ..Default::default()
         };
         return final_weather.to_string();
