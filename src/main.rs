@@ -148,7 +148,7 @@ fn process_daily_weather(
     result
 }
 
-async fn do_aqi_query(keys: APIKey, location: Location) -> i32 {
+async fn do_aqi_query(keys: &APIKey, location: &Location) -> i32 {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
             "https://api.openweathermap.org/data/2.5/air_pollution?lat={}&lon={}&appid={}",
@@ -182,6 +182,39 @@ fn convert_aqi_to_string(aqi: i32) -> String {
         "Poor".to_string()
     } else {
         "Very poor".to_string()
+    }
+}
+
+async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> data_types::ReverseGeocode {
+    if !keys.owm_key.is_empty() {
+        let owm_query = format!(
+            "https://api.openweathermap.org/geo/1.0/reverse?lat={}&lon={}&limit=1&appid={}",
+            location.latitude, location.longitude, keys.owm_key
+        );
+        let result = reqwest::get(owm_query).await;
+        if let Ok(response) = result {
+            if !StatusCode::is_success(&response.status()) {
+                // Our request failed for some reason, we will try again later.
+                return data_types::ReverseGeocode::default();
+            }
+            let response_mapping: Vec<HashMap<String, Value>> = response.json().await.unwrap();
+            let first_element: HashMap<String, Value> = response_mapping[0].clone();
+            data_types::ReverseGeocode {
+                name: first_element.get("name").unwrap().to_string(),
+                country: first_element.get("country").unwrap().to_string(),
+                state: {
+                    if first_element.contains_key("state") {
+                        first_element.get("state").unwrap().to_string()
+                    } else {
+                        "".to_string()
+                    }
+                },
+            }
+        } else {
+            data_types::ReverseGeocode::default()
+        }
+    } else {
+        data_types::ReverseGeocode::default()
     }
 }
 
@@ -225,7 +258,8 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
             hour_forecasts: hourly_weather.iter().map(|w| w.to_proto()).collect(),
             current_weather: Some(current_weather.to_proto()).into(),
             forecasts: daily_weather.iter().map(|w| w.to_proto()).collect(),
-            aqi: convert_aqi_to_string(do_aqi_query(keys, location).await),
+            aqi: convert_aqi_to_string(do_aqi_query(&keys, &location).await),
+            geocode: Some(do_reverse_geocode(&keys, &location).await.to_proto()).into(),
             ..Default::default()
         };
         return final_weather.to_string();

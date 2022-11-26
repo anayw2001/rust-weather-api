@@ -29,6 +29,12 @@ message HourlyWeather {
   int64 time = 4;
 }
 
+message ReverseGeocode {
+  string name = 1;
+  string country = 2;
+  string state = 3;
+}
+
 message WeatherInfo {
   HourlyWeather current_weather = 1;
   repeated OneDayForecast forecasts = 2;
@@ -36,4 +42,5 @@ message WeatherInfo {
   string aqi = 4;
   float wind_speed = 5;
   string weather_alerts = 6;
+  ReverseGeocode geocode = 7;
 }

@@ -101,3 +101,32 @@ impl ProtoAdapter for WeatherInfo {
         }
     }
 }
+
+pub(crate) struct ReverseGeocode {
+    pub(crate) name: String,
+    pub(crate) country: String,
+    pub(crate) state: String,
+}
+
+impl ReverseGeocode {
+    pub(crate) fn default() -> Self {
+        Self {
+            name: "".to_string(),
+            country: "".to_string(),
+            state: "".to_string(),
+        }
+    }
+}
+
+impl ProtoAdapter for ReverseGeocode {
+    type ProtoType = weather_message::ReverseGeocode;
+
+    fn to_proto(&self) -> Self::ProtoType {
+        weather_message::ReverseGeocode {
+            name: self.name.to_owned(),
+            country: self.country.to_owned(),
+            state: self.state.to_owned(),
+            ..Default::default()
+        }
+    }
+}
