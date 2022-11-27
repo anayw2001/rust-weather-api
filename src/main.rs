@@ -6,6 +6,7 @@ use crate::data_types::{Conditions, ProtoAdapter as _};
 
 use crate::weather_proto::weather_message;
 use actix_web::{get, web, App, HttpServer, Responder};
+use clap::Parser;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
@@ -15,6 +16,13 @@ use std::fmt::{Display, Formatter};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read as _};
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    #[arg(short, long, default_value="config/creds-example.json")]
+    config: &str,
+}
 
 mod weather_proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
@@ -180,8 +188,10 @@ fn convert_aqi_to_string(aqi: i32) -> String {
         "Moderate".to_string()
     } else if aqi == 4 {
         "Poor".to_string()
-    } else {
+    } else if aqi == 5 {
         "Very poor".to_string()
+    } else {
+        "AQI cannot be determined".to_string()
     }
 }
 
@@ -267,8 +277,8 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
     "no key".to_string()
 }
 
-fn get_credential_digest() -> Vec<u8> {
-    let input = File::open("creds.json").unwrap();
+fn get_credential_digest(config_path: String) -> Vec<u8> {
+    let input = File::open(config_path).unwrap();
     let mut reader = BufReader::new(input);
     let mut hasher = Sha256::new();
     let mut buffer = [0; 1024];
@@ -282,7 +292,7 @@ fn get_credential_digest() -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-async fn get_api_key_from_json() -> APIKey {
+async fn get_api_key_from_json(config_path: &str) -> APIKey {
     // Confirm that creds.json has not been modified, otherwise panic
     // let ds =
     // let mut transaction = ds.transaction(false, false).await.unwrap();
@@ -291,7 +301,7 @@ async fn get_api_key_from_json() -> APIKey {
     // let current_digest = get_credential_digest();
     // if stored_digest.ct_eq(current_digest.as_slice()).into() {
     // Load openweathermap api key.
-    let credentials_raw = fs::read_to_string("creds.json").expect("No creds.json file found.");
+    let credentials_raw = fs::read_to_string(config_path).expect("No creds.json file found.");
     serde_json::from_str(&credentials_raw).expect("bad json")
     // }
     // panic!("Credentials may have been modified while this API was running! Check for attackers!")
@@ -304,6 +314,7 @@ async fn greet(name: web::Path<String>) -> impl Responder {
 
 #[get("/v1/api/{latitude}/{longitude}/{units}")]
 async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Responder {
+    let cli = Cli::parse();
     let lat = full_query.0;
     let long = full_query.1;
     let units: Units = full_query.2.to_owned().into();
@@ -312,7 +323,7 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
     // if contains, format the json with the relevant entry from the db.
     // if not, query owm and store the result of the api call in the db, then return the information
     // the client needs.
-    let keys = get_api_key_from_json().await;
+    let keys = get_api_key_from_json(&cli.config).await;
     let full_proto_response = do_weather_query(
         keys,
         Location {

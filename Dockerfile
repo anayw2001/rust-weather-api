@@ -10,4 +10,4 @@ RUN cargo install --path .
 FROM debian:bullseye-slim
 #RUN apt-get update && apt-get install -y extra-runtime-dependencies && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/cargo/bin/rust-weather-api /usr/local/bin/rust-weather-api
-CMD ["rust-weather-api"]
+CMD ["rust-weather-api --config /config/creds-example.json"]
