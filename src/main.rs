@@ -25,6 +25,15 @@ struct Location {
     longitude: f64,
 }
 
+impl Location {
+    fn default() -> Self {
+        Self {
+            latitude: 0.0,
+            longitude: 0.0,
+        }
+    }
+}
+
 enum Units {
     Metric,
     Imperial,
@@ -185,6 +194,31 @@ fn convert_aqi_to_string(aqi: i32) -> String {
     }
 }
 
+async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
+    if !keys.owm_key.is_empty() {
+        let owm_query = format!(
+            "https://api.openweathermap.org/geo/1.0/direct?q={}&limit=1&appid={}",
+            place_name, keys.owm_key
+        );
+        let result = reqwest::get(owm_query).await;
+        if let Ok(response) = result {
+            if !StatusCode::is_success(&response.status()) {
+                // Our request failed for some reason, we will try again later.
+                return Location::default();
+            }
+            let response_mapping: Vec<HashMap<String, Value>> = response.json().await.unwrap();
+            Location {
+                latitude: response_mapping.get(0).unwrap().get("lat").unwrap().as_f64().unwrap(),
+                longitude: response_mapping.get(0).unwrap().get("lon").unwrap().as_f64().unwrap(),
+            }
+        } else {
+            Location::default()
+        }
+    } else {
+        Location::default()
+    }
+}
+
 async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> data_types::ReverseGeocode {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
@@ -302,7 +336,7 @@ async fn greet(name: web::Path<String>) -> impl Responder {
     format!("Hello {name}!")
 }
 
-#[get("/v1/api/{latitude}/{longitude}/{units}")]
+#[get("/v1/api/weather/{latitude}/{longitude}/{units}")]
 async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Responder {
     let lat = full_query.0;
     let long = full_query.1;
@@ -333,6 +367,25 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
     full_proto_response
 }
 
+#[get("/v1/api/geocode/{place}")]
+async fn geocode(full_query: web::Path<String>) -> impl Responder {
+    let keys = get_api_key_from_json().await;
+    let response = do_geocode(&keys, full_query.into_inner()).await;
+    format!("{}, {}", response.latitude, response.longitude)
+}
+
+#[get("/v1/api/reversegeocode/{latitude}/{longitude}")]
+async fn reverse_geocode(full_query: web::Path<(f64, f64)>) -> impl Responder {
+    let loc_tup = full_query.into_inner();
+    let loc = Location {
+        latitude: loc_tup.0,
+        longitude: loc_tup.1,
+    };
+    let keys = get_api_key_from_json().await;
+    let response = do_reverse_geocode(&keys, &loc).await;
+    response.to_proto().to_string()
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Store the SHA-256 hash of creds.json into the database so that we don't run into an issue
@@ -357,6 +410,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .route("/hello", web::get().to(|| async { "Hello World!" }))
             .service(greet)
+            .service(geocode)
+            .service(reverse_geocode)
             .service(parse_lat_long)
     })
     .bind(("0.0.0.0", 8080))?
