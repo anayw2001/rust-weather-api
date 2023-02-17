@@ -6,6 +6,7 @@ use crate::data_types::{Conditions, ProtoAdapter as _};
 
 use crate::weather_proto::weather_message;
 use actix_web::{get, web, App, HttpServer, Responder};
+use std::env;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
@@ -331,6 +332,17 @@ async fn get_api_key_from_json() -> APIKey {
     // panic!("Credentials may have been modified while this API was running! Check for attackers!")
 }
 
+async fn get_api_key_from_env() -> APIKey {
+    // Load openweathermap api key and return it.
+    let owm_key = env::var("OWM_KEY").expect("OWM_KEY not set");
+    // kill the process if the key is empty and return the key if it is not.
+    if owm_key.is_empty() {
+        panic!("OWM_KEY is empty!");
+    } else {
+        APIKey { owm_key }
+    }
+}
+
 #[get("/hello/{name}")]
 async fn greet(name: web::Path<String>) -> impl Responder {
     format!("Hello {name}!")
@@ -346,7 +358,7 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
     // if contains, format the json with the relevant entry from the db.
     // if not, query owm and store the result of the api call in the db, then return the information
     // the client needs.
-    let keys = get_api_key_from_json().await;
+    let keys = get_api_key_from_env().await;
     let full_proto_response = do_weather_query(
         keys,
         Location {
@@ -369,7 +381,7 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
 
 #[get("/v1/api/geocode/{place}")]
 async fn geocode(full_query: web::Path<String>) -> impl Responder {
-    let keys = get_api_key_from_json().await;
+    let keys = get_api_key_from_env().await;
     let response = do_geocode(&keys, full_query.into_inner()).await;
     format!("{}, {}", response.latitude, response.longitude)
 }
@@ -381,7 +393,7 @@ async fn reverse_geocode(full_query: web::Path<(f64, f64)>) -> impl Responder {
         latitude: loc_tup.0,
         longitude: loc_tup.1,
     };
-    let keys = get_api_key_from_json().await;
+    let keys = get_api_key_from_env().await;
     let response = do_reverse_geocode(&keys, &loc).await;
     response.to_proto().to_string()
 }
@@ -418,3 +430,5 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
+// TODO: probably write some unit tests for the env var function.
