@@ -302,37 +302,7 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
     "no key".to_string()
 }
 
-fn get_credential_digest() -> Vec<u8> {
-    let input = File::open("creds.json").unwrap();
-    let mut reader = BufReader::new(input);
-    let mut hasher = Sha256::new();
-    let mut buffer = [0; 1024];
-    loop {
-        let count = reader.read(&mut buffer).unwrap();
-        if count == 0 {
-            break;
-        }
-        hasher.update(&buffer[..count]);
-    }
-    hasher.finalize().to_vec()
-}
-
-async fn get_api_key_from_json() -> APIKey {
-    // Confirm that creds.json has not been modified, otherwise panic
-    // let ds =
-    // let mut transaction = ds.transaction(false, false).await.unwrap();
-    // Should have been created in main()
-    // let stored_digest = transaction.get("credential_sha").await.unwrap().unwrap();
-    // let current_digest = get_credential_digest();
-    // if stored_digest.ct_eq(current_digest.as_slice()).into() {
-    // Load openweathermap api key.
-    let credentials_raw = fs::read_to_string("creds.json").expect("No creds.json file found.");
-    serde_json::from_str(&credentials_raw).expect("bad json")
-    // }
-    // panic!("Credentials may have been modified while this API was running! Check for attackers!")
-}
-
-async fn get_api_key_from_env() -> APIKey {
+fn get_api_key_from_env() -> APIKey {
     // Load openweathermap api key and return it.
     let owm_key = env::var("OWM_KEY").expect("OWM_KEY not set");
     // kill the process if the key is empty and return the key if it is not.
@@ -358,7 +328,7 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
     // if contains, format the json with the relevant entry from the db.
     // if not, query owm and store the result of the api call in the db, then return the information
     // the client needs.
-    let keys = get_api_key_from_env().await;
+    let keys = get_api_key_from_env();
     let full_proto_response = do_weather_query(
         keys,
         Location {
@@ -381,7 +351,7 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
 
 #[get("/v1/api/geocode/{place}")]
 async fn geocode(full_query: web::Path<String>) -> impl Responder {
-    let keys = get_api_key_from_env().await;
+    let keys = get_api_key_from_env();
     let response = do_geocode(&keys, full_query.into_inner()).await;
     format!("{}, {}", response.latitude, response.longitude)
 }
@@ -393,7 +363,7 @@ async fn reverse_geocode(full_query: web::Path<(f64, f64)>) -> impl Responder {
         latitude: loc_tup.0,
         longitude: loc_tup.1,
     };
-    let keys = get_api_key_from_env().await;
+    let keys = get_api_key_from_env();
     let response = do_reverse_geocode(&keys, &loc).await;
     response.to_proto().to_string()
 }
