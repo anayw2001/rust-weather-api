@@ -29,14 +29,14 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@@v4.3.0
+        uses: docker/metadata-action@v4.3.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-              # tag event
-              type=ref,event=tag
-              # define default branch
-              type=edge,branch=main
+          tags: |
+                # tag event
+                type=ref,event=tag
+                # define default branch
+                type=edge,branch=main
 
 
       - name: Build and push Docker image
