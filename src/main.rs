@@ -158,7 +158,7 @@ fn process_daily_weather(
 async fn do_aqi_query(keys: &APIKey, location: &Location) -> i32 {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
-            "https://api.openweathermap.org/data/2.5/air_pollution?lat={}&lon={}&appid={}",
+            "http://api.openweathermap.org/data/2.5/air_pollution?lat={}&lon={}&appid={}",
             location.latitude, location.longitude, keys.owm_key
         );
         let result = reqwest::get(owm_query).await;
