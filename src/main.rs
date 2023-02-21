@@ -6,12 +6,13 @@ use crate::data_types::{Conditions, ProtoAdapter as _};
 
 use crate::weather_proto::weather_message;
 use actix_web::{get, web, App, HttpServer, Responder};
-use std::env;
+use protobuf::Message;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::env;
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::fs::File;
@@ -209,8 +210,20 @@ async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
             }
             let response_mapping: Vec<HashMap<String, Value>> = response.json().await.unwrap();
             Location {
-                latitude: response_mapping.get(0).unwrap().get("lat").unwrap().as_f64().unwrap(),
-                longitude: response_mapping.get(0).unwrap().get("lon").unwrap().as_f64().unwrap(),
+                latitude: response_mapping
+                    .get(0)
+                    .unwrap()
+                    .get("lat")
+                    .unwrap()
+                    .as_f64()
+                    .unwrap(),
+                longitude: response_mapping
+                    .get(0)
+                    .unwrap()
+                    .get("lon")
+                    .unwrap()
+                    .as_f64()
+                    .unwrap(),
             }
         } else {
             Location::default()
@@ -253,7 +266,7 @@ async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> data_types::R
     }
 }
 
-async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> String {
+async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> impl Responder {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
             "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&appid={}&units={}",
@@ -262,12 +275,14 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
         let result = reqwest::get(owm_query).await;
         if result.is_err() {
             // Our request failed for some reason, we will try again later.
-            return "request failed 1".to_string();
+            return b"request failed 1".to_vec();
         }
         let response = result.unwrap();
         if !StatusCode::is_success(&response.status()) {
             // Our request failed for some reason, we will try again later.
-            return format!("request failed with statuscode: {}", &response.status());
+            return format!("request failed with statuscode: {}", &response.status())
+                .as_bytes()
+                .to_vec();
         }
         let response_mapping: HashMap<String, Value> = response.json().await.unwrap();
         eprintln!(
@@ -297,9 +312,9 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> Str
             geocode: Some(do_reverse_geocode(&keys, &location).await.to_proto()).into(),
             ..Default::default()
         };
-        return final_weather.to_string();
+        return final_weather.write_to_bytes().unwrap();
     }
-    "no key".to_string()
+    b"no key".to_vec()
 }
 
 fn get_api_key_from_env() -> APIKey {
