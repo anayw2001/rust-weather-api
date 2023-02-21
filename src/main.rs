@@ -10,13 +10,9 @@ use protobuf::Message;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::env;
 use std::fmt::{Display, Formatter};
-use std::fs;
-use std::fs::File;
-use std::io::{BufReader, Read as _};
 
 mod weather_proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
@@ -274,6 +270,7 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> imp
         );
         let result = reqwest::get(owm_query).await;
         if result.is_err() {
+            println!("{:?}", result.err());
             // Our request failed for some reason, we will try again later.
             return b"request failed 1".to_vec();
         }
