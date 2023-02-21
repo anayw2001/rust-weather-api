@@ -195,7 +195,7 @@ fn convert_aqi_to_string(aqi: i32) -> String {
 async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
-            "https://api.openweathermap.org/geo/1.0/direct?q={}&limit=1&appid={}",
+            "http://api.openweathermap.org/geo/1.0/direct?q={}&limit=1&appid={}",
             place_name, keys.owm_key
         );
         let result = reqwest::get(owm_query).await;
@@ -232,7 +232,7 @@ async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
 async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> data_types::ReverseGeocode {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
-            "https://api.openweathermap.org/geo/1.0/reverse?lat={}&lon={}&limit=1&appid={}",
+            "http://api.openweathermap.org/geo/1.0/reverse?lat={}&lon={}&limit=1&appid={}",
             location.latitude, location.longitude, keys.owm_key
         );
         let result = reqwest::get(owm_query).await;
@@ -265,7 +265,7 @@ async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> data_types::R
 async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> impl Responder {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
-            "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&appid={}&units={}",
+            "http://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&appid={}&units={}",
             location.latitude, location.longitude, keys.owm_key, units
         );
         let result = reqwest::get(owm_query).await;
