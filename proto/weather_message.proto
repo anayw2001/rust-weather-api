@@ -20,6 +20,7 @@ message OneDayForecast {
   int64 time = 4;
   int64 sunrise = 5;
   int64 sunset = 6;
+  int64 rain = 7;
 }
 
 message HourlyWeather {

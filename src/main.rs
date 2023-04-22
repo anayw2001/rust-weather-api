@@ -150,6 +150,7 @@ fn process_daily_weather(
             time: daily_weather.get("dt").unwrap().as_i64().unwrap(),
             sunrise: daily_weather.get("sunrise").unwrap().as_i64().unwrap(),
             sunset: daily_weather.get("sunset").unwrap().as_i64().unwrap(),
+            rain: daily_weather.get("rain").unwrap().as_i64().unwrap(),
         })
     }
     result

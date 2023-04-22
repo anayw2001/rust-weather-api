@@ -40,6 +40,7 @@ pub(crate) struct OneDayForecast {
     pub(crate) time: i64,
     pub(crate) sunrise: i64,
     pub(crate) sunset: i64,
+    pub(crate) rain: i64,
 }
 
 impl ProtoAdapter for OneDayForecast {
@@ -53,6 +54,7 @@ impl ProtoAdapter for OneDayForecast {
             time: self.time,
             sunrise: self.sunrise,
             sunset: self.sunset,
+            rain: self.rain,
             ..Default::default()
         }
     }
