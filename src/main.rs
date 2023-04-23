@@ -130,6 +130,7 @@ fn process_daily_weather(
 ) -> Vec<data_types::OneDayForecast> {
     let mut result = vec![];
     for daily_weather in daily_weather_mapping {
+        println!("daily_weather: {:?}", daily_weather);
         let temp_mapping: HashMap<String, f64> =
             serde_json::from_value(daily_weather.get("temp").unwrap().clone()).unwrap();
         let high_temp = *temp_mapping.get("max").unwrap();
@@ -150,7 +151,11 @@ fn process_daily_weather(
             time: daily_weather.get("dt").unwrap().as_i64().unwrap(),
             sunrise: daily_weather.get("sunrise").unwrap().as_i64().unwrap(),
             sunset: daily_weather.get("sunset").unwrap().as_i64().unwrap(),
-            rain: daily_weather.get("rain").unwrap().as_i64().unwrap(),
+            rain: daily_weather
+                .get("rain")
+                .unwrap_or(&serde_json::Value::from(0f64))
+                .as_f64()
+                .unwrap(),
         })
     }
     result
