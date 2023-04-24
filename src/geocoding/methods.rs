@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-
 use reqwest::StatusCode;
-use serde_json::Value;
 
-use crate::{APIKey, Location, data_types};
+use crate::{data_types, APIKey, Location};
 
 use super::entities::DoGeocodeResp;
 
@@ -40,7 +37,10 @@ pub(crate) async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
     }
 }
 
-pub(crate) async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> data_types::ReverseGeocode {
+pub(crate) async fn do_reverse_geocode(
+    keys: &APIKey,
+    location: &Location,
+) -> data_types::ReverseGeocode {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
             "http://api.openweathermap.org/geo/1.0/reverse?lat={}&lon={}&limit=1&appid={}",
@@ -52,18 +52,16 @@ pub(crate) async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> da
                 // Our request failed for some reason, we will try again later.
                 return data_types::ReverseGeocode::default();
             }
-            let response_mapping: Vec<HashMap<String, Value>> = response.json().await.unwrap();
-            let first_element: HashMap<String, Value> = response_mapping[0].clone();
-            data_types::ReverseGeocode {
-                name: first_element.get("name").unwrap().to_string(),
-                country: first_element.get("country").unwrap().to_string(),
-                state: {
-                    if first_element.contains_key("state") {
-                        first_element.get("state").unwrap().to_string()
-                    } else {
-                        "".to_string()
-                    }
-                },
+            let response_mapping = response.json::<Vec<DoGeocodeResp>>().await.unwrap();
+            let first = response_mapping.get(0);
+            if let Some(loc) = first {
+                data_types::ReverseGeocode {
+                    name: loc.name.clone(),
+                    country: loc.country.clone(),
+                    state: loc.state.clone().unwrap_or(String::from("")),
+                }
+            } else {
+                data_types::ReverseGeocode::default()
             }
         } else {
             data_types::ReverseGeocode::default()

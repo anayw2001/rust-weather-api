@@ -9,4 +9,5 @@ pub(crate) struct DoGeocodeResp {
     pub(crate) lat: f64,
     pub(crate) lon: f64,
     pub(crate) country: String,
+    pub(crate) state: Option<String>,
 }
