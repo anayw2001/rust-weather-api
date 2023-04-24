@@ -1,6 +1,5 @@
 // mod database_utils;
 mod data_types;
-mod math;
 mod geocoding;
 
 use crate::data_types::{Conditions, ProtoAdapter as _};
