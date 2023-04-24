@@ -1,6 +1,7 @@
 use std::{fmt::{Display, Formatter}, collections::HashMap};
 
-use crate::weather_proto::weather_message;
+use crate::{weather_proto::weather_message, geocoding::entities::ReverseGeocode};
+use chrono::{DateTime, Utc};
 use protobuf::EnumOrUnknown;
 
 pub(crate) trait ProtoAdapter {
@@ -262,7 +263,7 @@ pub struct Temp {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Minutely {
     pub(crate) dt: i64,
-    pub(crate) precipitation: i64,
+    pub(crate) precipitation: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -313,4 +314,11 @@ pub struct List {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AqiMain {
     pub(crate) aqi: i64,
+}
+
+#[derive(Debug)]
+pub struct CachedData {
+    pub weather: weather_message::WeatherInfo,
+    pub reverse_geocode: ReverseGeocode,
+    pub expiry: DateTime<Utc>
 }

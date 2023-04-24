@@ -12,10 +12,11 @@ pub(crate) struct DoGeocodeResp {
     pub(crate) state: Option<String>,
 }
 
-pub(crate) struct ReverseGeocode {
-    pub(crate) name: String,
-    pub(crate) country: String,
-    pub(crate) state: String,
+#[derive(Debug, Clone)]
+pub struct ReverseGeocode {
+    pub name: String,
+    pub country: String,
+    pub state: String,
 }
 
 impl ReverseGeocode {

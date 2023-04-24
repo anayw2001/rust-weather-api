@@ -10,12 +10,22 @@ use crate::weather::methods::do_weather_query;
 
 use actix_web::{get, web, App, HttpServer, Responder};
 use entities::Location;
+use kiddo::float::kdtree::KdTree;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::env;
+use std::sync::Mutex;
 use tracing::info;
+use weather::entities::CachedData;
 
 mod weather_proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
+}
+
+#[derive(Debug)]
+struct AppState {
+    kdtree: Mutex<KdTree<f64, usize, 3, 32, u32>>,
+    cached_data: Mutex<HashMap<usize, CachedData>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -42,8 +52,8 @@ async fn greet(name: web::Path<String>) -> impl Responder {
 }
 
 #[get("/v1/api/weather/{latitude}/{longitude}/{units}")]
-#[tracing::instrument]
-async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Responder {
+#[tracing::instrument(skip(data))]
+async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>, data: web::Data<AppState>) -> impl Responder {
     let lat = full_query.0;
     let long = full_query.1;
     let units: Units = full_query.2.to_owned().into();
@@ -60,6 +70,7 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
             longitude: long,
         },
         units,
+        data
     )
     .await;
     // let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str()).await;
@@ -77,29 +88,33 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
 #[tracing::instrument]
 async fn geocode(full_query: web::Path<String>) -> impl Responder {
     let keys = get_api_key_from_env();
-    let response = geocoding::methods::do_geocode(&keys, full_query.into_inner())
-        .await;
+    let response = geocoding::methods::do_geocode(&keys, full_query.into_inner()).await;
     match response {
         Ok(resp) => format!("{}, {}", resp.latitude, resp.longitude),
-        Err(_) => String::from("something went wrong")
+        Err(_) => String::from("something went wrong"),
     }
-    
 }
 
 #[get("/v1/api/reversegeocode/{latitude}/{longitude}")]
-#[tracing::instrument]
-async fn reverse_geocode(full_query: web::Path<(f64, f64)>) -> impl Responder {
+#[tracing::instrument(skip(data))]
+async fn reverse_geocode(
+    full_query: web::Path<(f64, f64)>,
+    data: web::Data<AppState>,
+) -> impl Responder {
     let loc_tup = full_query.into_inner();
     let loc = Location {
         latitude: loc_tup.0,
         longitude: loc_tup.1,
     };
+
     let keys = get_api_key_from_env();
-    let resp = geocoding::methods::do_reverse_geocode(&keys, &loc)
-    .await;
+    let resp = geocoding::methods::do_reverse_geocode(&keys, &loc, &data).await;
     match resp {
-        Ok(response) => response.to_proto().to_string(),
-        Err(_) => String::from("something went wrong")
+        Ok(response) => {
+            let resp = response.to_proto().to_string();
+            resp
+        }
+        Err(_) => String::from("something went wrong"),
     }
 }
 
@@ -128,8 +143,13 @@ async fn main() -> std::io::Result<()> {
     // transaction.commit().await.expect("failed to commit");
 
     info!("Starting HTTP server on port 8080");
-    HttpServer::new(|| {
+    let web_data = web::Data::new(AppState {
+        kdtree: Mutex::new(KdTree::new()),
+        cached_data: Mutex::new(HashMap::new()),
+    });
+    HttpServer::new(move || {
         App::new()
+            .app_data(web_data.clone())
             .route("/hello", web::get().to(|| async { "Hello World!" }))
             .service(greet)
             .service(geocode)
