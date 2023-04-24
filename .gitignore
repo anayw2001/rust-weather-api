@@ -9,3 +9,4 @@ creds.json
 .idea
 .vscode
 .fleet/
+.env
