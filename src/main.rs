@@ -1,17 +1,18 @@
 // mod database_utils;
 mod entities;
+mod errors;
 mod geocoding;
 mod weather;
-mod utils;
 
+use crate::errors::IntoHttpError;
 use crate::weather::entities::{ProtoAdapter as _, Units};
-
 use crate::weather::methods::do_weather_query;
+
 use actix_web::{get, web, App, HttpServer, Responder};
 use entities::Location;
 use serde::Deserialize;
-use tracing::info;
 use std::env;
+use tracing::info;
 
 mod weather_proto {
     include!(concat!(env!("OUT_DIR"), "/proto/mod.rs"));
@@ -69,15 +70,20 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
     // let session = Session::for_kv();
     // let statement = "SELECT * FROM locations";
     // let res = store.execute(statement, &session, None, false);
-    full_proto_response
+    full_proto_response.http_internal_error("could not fetch weather")
 }
 
 #[get("/v1/api/geocode/{place}")]
 #[tracing::instrument]
 async fn geocode(full_query: web::Path<String>) -> impl Responder {
     let keys = get_api_key_from_env();
-    let response = geocoding::methods::do_geocode(&keys, full_query.into_inner()).await;
-    format!("{}, {}", response.latitude, response.longitude)
+    let response = geocoding::methods::do_geocode(&keys, full_query.into_inner())
+        .await;
+    match response {
+        Ok(resp) => format!("{}, {}", resp.latitude, resp.longitude),
+        Err(_) => String::from("something went wrong")
+    }
+    
 }
 
 #[get("/v1/api/reversegeocode/{latitude}/{longitude}")]
@@ -89,8 +95,12 @@ async fn reverse_geocode(full_query: web::Path<(f64, f64)>) -> impl Responder {
         longitude: loc_tup.1,
     };
     let keys = get_api_key_from_env();
-    let response = geocoding::methods::do_reverse_geocode(&keys, &loc).await;
-    response.to_proto().to_string()
+    let resp = geocoding::methods::do_reverse_geocode(&keys, &loc)
+    .await;
+    match resp {
+        Ok(response) => response.to_proto().to_string(),
+        Err(_) => String::from("something went wrong")
+    }
 }
 
 #[actix_web::main]

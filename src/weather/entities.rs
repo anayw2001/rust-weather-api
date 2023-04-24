@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::{fmt::{Display, Formatter}, collections::HashMap};
 
 use crate::weather_proto::weather_message;
 use protobuf::EnumOrUnknown;
@@ -9,7 +9,6 @@ pub(crate) trait ProtoAdapter {
 }
 
 pub(crate) enum Conditions {
-    Unknown,
     Rainy,
     Cloudy,
     Clear,
@@ -29,7 +28,6 @@ impl ProtoAdapter for Conditions {
             Conditions::Snow => weather_message::Conditions::SNOW,
             Conditions::Overcast => weather_message::Conditions::OVERCAST,
             Conditions::Storm => weather_message::Conditions::STORM,
-            Conditions::Unknown => weather_message::Conditions::UNKNOWN,
         }
         .into()
     }
@@ -291,4 +289,28 @@ pub enum Main {
     Clouds,
     Mist,
     Rain,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AqiResponse {
+    pub(crate) coord: Coord,
+    pub(crate) list: Vec<List>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Coord {
+    pub(crate) lon: f64,
+    pub(crate) lat: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct List {
+    pub(crate) main: AqiMain,
+    pub(crate) components: HashMap<String, f64>,
+    pub(crate) dt: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AqiMain {
+    pub(crate) aqi: i64,
 }

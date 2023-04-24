@@ -1,6 +1,6 @@
 use crate::weather::entities::Conditions;
 
-pub(crate) fn convert_aqi_to_string(aqi: i32) -> String {
+pub(crate) fn convert_aqi_to_string(aqi: i64) -> String {
     String::from(match aqi {
         1 => "Good",
         2 => "Fair",
