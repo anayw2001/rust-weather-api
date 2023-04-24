@@ -5,6 +5,8 @@ use serde_json::Value;
 
 use crate::{APIKey, Location, data_types};
 
+use super::entities::DoGeocodeResp;
+
 pub(crate) async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
@@ -17,25 +19,18 @@ pub(crate) async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
                 // Our request failed for some reason, we will try again later.
                 return Location::default();
             }
-            let response_mapping: Vec<HashMap<String, Value>> = response.json().await.unwrap();
+            let response_mapping = response.json::<Vec<DoGeocodeResp>>().await.unwrap();
             if response_mapping.len() == 0 {
                 return Location::default();
             }
-            Location {
-                latitude: response_mapping
-                    .get(0)
-                    .unwrap()
-                    .get("lat")
-                    .unwrap()
-                    .as_f64()
-                    .unwrap(),
-                longitude: response_mapping
-                    .get(0)
-                    .unwrap()
-                    .get("lon")
-                    .unwrap()
-                    .as_f64()
-                    .unwrap(),
+            let first = response_mapping.get(0);
+            if let Some(loc) = first {
+                Location {
+                    latitude: loc.lat,
+                    longitude: loc.lon,
+                }
+            } else {
+                Location::default()
             }
         } else {
             Location::default()
