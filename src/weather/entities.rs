@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use crate::weather_proto::weather_message;
 use protobuf::EnumOrUnknown;
 
@@ -104,31 +106,28 @@ impl ProtoAdapter for WeatherInfo {
     }
 }
 
-pub(crate) struct ReverseGeocode {
-    pub(crate) name: String,
-    pub(crate) country: String,
-    pub(crate) state: String,
+pub (crate) enum Units {
+    Metric,
+    Imperial,
+    Standard,
 }
 
-impl ReverseGeocode {
-    pub(crate) fn default() -> Self {
-        Self {
-            name: "".to_string(),
-            country: "".to_string(),
-            state: "".to_string(),
+impl Display for Units {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Units::Metric => f.write_str("metric"),
+            Units::Imperial => f.write_str("imperial"),
+            Units::Standard => f.write_str("standard"),
         }
     }
 }
 
-impl ProtoAdapter for ReverseGeocode {
-    type ProtoType = weather_message::ReverseGeocode;
-
-    fn to_proto(&self) -> Self::ProtoType {
-        weather_message::ReverseGeocode {
-            name: self.name.to_owned(),
-            country: self.country.to_owned(),
-            state: self.state.to_owned(),
-            ..Default::default()
+impl From<String> for Units {
+    fn from(unit: String) -> Self {
+        match unit.as_str() {
+            "metric" => Units::Metric,
+            "imperial" => Units::Imperial,
+            _ => Units::Standard,
         }
     }
 }
