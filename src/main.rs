@@ -1,6 +1,7 @@
 // mod database_utils;
 mod data_types;
 mod math;
+mod geocoding;
 
 use crate::data_types::{Conditions, ProtoAdapter as _};
 
@@ -10,6 +11,7 @@ use protobuf::Message;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::Value;
+use tracing::info;
 use std::collections::HashMap;
 use std::env;
 use std::fmt::{Display, Formatter};
@@ -198,76 +200,6 @@ fn convert_aqi_to_string(aqi: i32) -> String {
     }
 }
 
-async fn do_geocode(keys: &APIKey, place_name: String) -> Location {
-    if !keys.owm_key.is_empty() {
-        let owm_query = format!(
-            "http://api.openweathermap.org/geo/1.0/direct?q={}&limit=1&appid={}",
-            place_name, keys.owm_key
-        );
-        let result = reqwest::get(owm_query).await;
-        if let Ok(response) = result {
-            if !StatusCode::is_success(&response.status()) {
-                // Our request failed for some reason, we will try again later.
-                return Location::default();
-            }
-            let response_mapping: Vec<HashMap<String, Value>> = response.json().await.unwrap();
-            Location {
-                latitude: response_mapping
-                    .get(0)
-                    .unwrap()
-                    .get("lat")
-                    .unwrap()
-                    .as_f64()
-                    .unwrap(),
-                longitude: response_mapping
-                    .get(0)
-                    .unwrap()
-                    .get("lon")
-                    .unwrap()
-                    .as_f64()
-                    .unwrap(),
-            }
-        } else {
-            Location::default()
-        }
-    } else {
-        Location::default()
-    }
-}
-
-async fn do_reverse_geocode(keys: &APIKey, location: &Location) -> data_types::ReverseGeocode {
-    if !keys.owm_key.is_empty() {
-        let owm_query = format!(
-            "http://api.openweathermap.org/geo/1.0/reverse?lat={}&lon={}&limit=1&appid={}",
-            location.latitude, location.longitude, keys.owm_key
-        );
-        let result = reqwest::get(owm_query).await;
-        if let Ok(response) = result {
-            if !StatusCode::is_success(&response.status()) {
-                // Our request failed for some reason, we will try again later.
-                return data_types::ReverseGeocode::default();
-            }
-            let response_mapping: Vec<HashMap<String, Value>> = response.json().await.unwrap();
-            let first_element: HashMap<String, Value> = response_mapping[0].clone();
-            data_types::ReverseGeocode {
-                name: first_element.get("name").unwrap().to_string(),
-                country: first_element.get("country").unwrap().to_string(),
-                state: {
-                    if first_element.contains_key("state") {
-                        first_element.get("state").unwrap().to_string()
-                    } else {
-                        "".to_string()
-                    }
-                },
-            }
-        } else {
-            data_types::ReverseGeocode::default()
-        }
-    } else {
-        data_types::ReverseGeocode::default()
-    }
-}
-
 async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> impl Responder {
     if !keys.owm_key.is_empty() {
         let owm_query = format!(
@@ -312,7 +244,7 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> imp
             current_weather: Some(current_weather.to_proto()).into(),
             forecasts: daily_weather.iter().map(|w| w.to_proto()).collect(),
             aqi: convert_aqi_to_string(do_aqi_query(&keys, &location).await),
-            geocode: Some(do_reverse_geocode(&keys, &location).await.to_proto()).into(),
+            geocode: Some(geocoding::methods::do_reverse_geocode(&keys, &location).await.to_proto()).into(),
             ..Default::default()
         };
         return final_weather.write_to_bytes().unwrap();
@@ -320,6 +252,7 @@ async fn do_weather_query(keys: APIKey, location: Location, units: Units) -> imp
     b"no key".to_vec()
 }
 
+#[tracing::instrument]
 fn get_api_key_from_env() -> APIKey {
     // Load openweathermap api key and return it.
     let owm_key = env::var("OWM_KEY").expect("OWM_KEY not set");
@@ -337,6 +270,7 @@ async fn greet(name: web::Path<String>) -> impl Responder {
 }
 
 #[get("/v1/api/weather/{latitude}/{longitude}/{units}")]
+#[tracing::instrument]
 async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Responder {
     let lat = full_query.0;
     let long = full_query.1;
@@ -368,13 +302,15 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>) -> impl Respo
 }
 
 #[get("/v1/api/geocode/{place}")]
+#[tracing::instrument]
 async fn geocode(full_query: web::Path<String>) -> impl Responder {
     let keys = get_api_key_from_env();
-    let response = do_geocode(&keys, full_query.into_inner()).await;
+    let response = geocoding::methods::do_geocode(&keys, full_query.into_inner()).await;
     format!("{}, {}", response.latitude, response.longitude)
 }
 
 #[get("/v1/api/reversegeocode/{latitude}/{longitude}")]
+#[tracing::instrument]
 async fn reverse_geocode(full_query: web::Path<(f64, f64)>) -> impl Responder {
     let loc_tup = full_query.into_inner();
     let loc = Location {
@@ -382,12 +318,15 @@ async fn reverse_geocode(full_query: web::Path<(f64, f64)>) -> impl Responder {
         longitude: loc_tup.1,
     };
     let keys = get_api_key_from_env();
-    let response = do_reverse_geocode(&keys, &loc).await;
+    let response = geocoding::methods::do_reverse_geocode(&keys, &loc).await;
     response.to_proto().to_string()
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // install global tracing collector configured based on RUST_LOG env var
+    tracing_subscriber::fmt::init();
+    info!("Initialized tracing");
     // Store the SHA-256 hash of creds.json into the database so that we don't run into an issue
     // where an attacker can introduce a TOCTOU vuln.
     // let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str())
@@ -406,6 +345,8 @@ async fn main() -> std::io::Result<()> {
     //     .await
     //     .expect("failed to write hash to store");
     // transaction.commit().await.expect("failed to commit");
+
+    info!("Starting HTTP server on port 8080");
     HttpServer::new(|| {
         App::new()
             .route("/hello", web::get().to(|| async { "Hello World!" }))
