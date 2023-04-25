@@ -3,8 +3,8 @@ use chrono::{Duration, Utc};
 use kiddo::distance::squared_euclidean;
 use protobuf::Message;
 use reqwest::StatusCode;
-use tracing::{debug, info};
 use std::mem::drop;
+use tracing::debug;
 
 use crate::{
     entities::Location,
@@ -143,7 +143,6 @@ pub(crate) async fn do_weather_query(
             expiry: Utc::now() + Duration::hours(1),
         },
     );
-
 
     // add index to kdtree
     kdtree.add(
