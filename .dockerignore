@@ -1,0 +1,12 @@
+/target
+*.iml
+.idea
+creds.json
+*.db
+
+# Project files
+.settings
+.idea
+.vscode
+.fleet/
+.env

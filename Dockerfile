@@ -1,4 +1,4 @@
-FROM rust:1.65.0 as builder
+FROM rustlang/rust:nightly as builder
 WORKDIR /usr/src/rust-weather-api
 COPY . .
 RUN apt-get update \
