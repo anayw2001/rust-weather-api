@@ -1,6 +1,9 @@
-use std::{fmt::{Display, Formatter}, collections::HashMap};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter},
+};
 
-use crate::{weather_proto::weather_message, geocoding::entities::ReverseGeocode};
+use crate::{geocoding::entities::ReverseGeocode, weather_proto::weather_message};
 use chrono::{DateTime, Utc};
 use protobuf::EnumOrUnknown;
 
@@ -105,7 +108,7 @@ impl ProtoAdapter for WeatherInfo {
     }
 }
 
-pub (crate) enum Units {
+pub(crate) enum Units {
     Metric,
     Imperial,
     Standard,
@@ -144,7 +147,7 @@ impl From<String> for Units {
 //     let model: WeatherResponse = serde_json::from_str(&json).unwrap();
 // }
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use super::utils::convert_id_to_condition;
 
@@ -179,8 +182,13 @@ pub struct Current {
     pub(crate) wind_deg: i64,
     pub(crate) wind_gust: Option<f64>,
     pub(crate) weather: Vec<Weather>,
-    pub(crate) rain: Option<f64>,
-    pub(crate) snow: Option<f64>,
+    pub(crate) rain: Option<RainSnow>,
+    pub(crate) snow: Option<RainSnow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RainSnow {
+    pub(crate) r1_h: Option<f64>,
 }
 
 impl ProtoAdapter for Current {
@@ -280,6 +288,10 @@ pub enum Description {
     FewClouds,
     #[serde(rename = "light rain")]
     LightRain,
+    #[serde(rename = "moderate rain")]
+    ModerateRain,
+    #[serde(rename = "heavy intensity rain")]
+    HeavyIntensityRain,
     #[serde(rename = "mist")]
     Mist,
     #[serde(rename = "overcast clouds")]
@@ -324,5 +336,5 @@ pub struct AqiMain {
 pub struct CachedData {
     pub weather: weather_message::WeatherInfo,
     pub reverse_geocode: ReverseGeocode,
-    pub expiry: DateTime<Utc>
+    pub expiry: DateTime<Utc>,
 }
