@@ -148,6 +148,8 @@ use serde::{Serialize, Deserialize};
 
 use super::utils::convert_id_to_condition;
 
+// Keep up to date with https://openweathermap.org/api/one-call-3#parameter.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WeatherResponse {
     pub(crate) lat: f64,
@@ -170,14 +172,15 @@ pub struct Current {
     pub(crate) pressure: i64,
     pub(crate) humidity: i64,
     pub(crate) dew_point: f64,
-    pub(crate) uvi: f64,
     pub(crate) clouds: i64,
+    pub(crate) uvi: f64,
     pub(crate) visibility: i64,
     pub(crate) wind_speed: f64,
     pub(crate) wind_deg: i64,
-    pub(crate) weather: Vec<Weather>,
     pub(crate) wind_gust: Option<f64>,
-    pub(crate) pop: Option<i64>,
+    pub(crate) weather: Vec<Weather>,
+    pub(crate) rain: Option<f64>,
+    pub(crate) snow: Option<f64>,
 }
 
 impl ProtoAdapter for Current {
@@ -223,6 +226,7 @@ pub struct Daily {
     pub(crate) pop: f64,
     pub(crate) uvi: f64,
     pub(crate) rain: Option<f64>,
+    pub(crate) summary: String,
 }
 
 impl ProtoAdapter for Daily {
