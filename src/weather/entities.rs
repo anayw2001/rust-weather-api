@@ -298,14 +298,20 @@ pub enum Description {
     OvercastClouds,
     #[serde(rename = "scattered clouds")]
     ScatteredClouds,
+    #[serde(rename = "haze")]
+    Haze,
+    #[serde(rename = "smoke")]
+    Smoke,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Main {
     Clear,
     Clouds,
+    Haze,
     Mist,
     Rain,
+    Smoke,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
