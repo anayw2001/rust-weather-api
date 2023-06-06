@@ -19,6 +19,8 @@ pub(crate) enum Conditions {
     Snow,
     Overcast,
     Storm,
+    Haze,
+    Smoke,
 }
 
 impl ProtoAdapter for Conditions {
@@ -32,6 +34,8 @@ impl ProtoAdapter for Conditions {
             Conditions::Snow => weather_message::Conditions::SNOW,
             Conditions::Overcast => weather_message::Conditions::OVERCAST,
             Conditions::Storm => weather_message::Conditions::STORM,
+            Conditions::Haze => weather_message::Conditions::HAZE,
+            Conditions::Smoke => weather_message::Conditions::SMOKE,
         }
         .into()
     }

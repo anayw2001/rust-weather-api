@@ -10,6 +10,8 @@ enum Conditions {
  SNOW = 4;
  OVERCAST = 5;
  STORM = 6;
+ HAZE = 7;
+ SMOKE = 8;
 }
 
 message OneDayForecast {

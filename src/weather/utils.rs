@@ -23,6 +23,12 @@ pub(crate) fn convert_id_to_condition(current_weather_id: i64) -> Conditions {
         Conditions::Snow
     } else if current_weather_id > 199 && current_weather_id < 300 {
         Conditions::Storm
+    } else if current_weather_id > 699 && current_weather_id < 799 {
+        if current_weather_id == 711 {
+            Conditions::Smoke
+        } else {
+            Conditions::Haze
+        }
     } else {
         Conditions::Rainy
     }
@@ -46,7 +52,7 @@ pub const EARTH_RADIUS_IN_KM: f64 = 6371.0;
 /// Converts a squared euclidean unit sphere distance (like what we'd get back from
 /// our kd-tree) into kilometres for user convenience.
 #[allow(dead_code)]
-pub fn unit_sphere_squared_euclidean_to_kilometres(sq_euc_dist: f64) -> f64{
+pub fn unit_sphere_squared_euclidean_to_kilometres(sq_euc_dist: f64) -> f64 {
     sq_euc_dist.sqrt() * EARTH_RADIUS_IN_KM
 }
 
