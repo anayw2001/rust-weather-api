@@ -127,6 +127,11 @@ pub(crate) async fn do_weather_query(
             .iter()
             .map(|a| a.to_proto())
             .collect(),
+        minutely_rain: response_mapping
+            .minutely
+            .iter()
+            .map(|r| r.to_proto())
+            .collect(),
         ..Default::default()
     };
 

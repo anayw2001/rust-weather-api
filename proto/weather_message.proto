@@ -45,6 +45,11 @@ message WeatherAlert {
   int64 end = 4;
 }
 
+message Minutely {
+  int64 time = 1;
+  double rain = 2;
+}
+
 message WeatherInfo {
   HourlyWeather current_weather = 1;
   repeated OneDayForecast forecasts = 2;
@@ -54,4 +59,5 @@ message WeatherInfo {
   string weather_alerts = 6 [deprecated = true];
   ReverseGeocode geocode = 7;
   repeated WeatherAlert alerts = 8;
+  repeated Minutely minutely_rain = 9;
 }

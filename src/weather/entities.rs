@@ -306,6 +306,18 @@ pub struct Minutely {
     pub(crate) precipitation: f64,
 }
 
+impl ProtoAdapter for Minutely {
+    type ProtoType = weather_message::Minutely;
+
+    fn to_proto(&self) -> Self::ProtoType {
+        weather_message::Minutely {
+            time: self.dt,
+            rain: self.precipitation,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Description {
     #[serde(rename = "broken clouds")]
