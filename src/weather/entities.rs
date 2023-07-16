@@ -158,6 +158,29 @@ use super::utils::convert_id_to_condition;
 // Keep up to date with https://openweathermap.org/api/one-call-3#parameter.
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeatherAlert {
+    pub(crate) sender_name: String,
+    pub(crate) event: String,
+    pub(crate) start: i64,
+    pub(crate) end: i64,
+    pub(crate) description: String,
+}
+
+impl ProtoAdapter for WeatherAlert {
+    type ProtoType = weather_message::WeatherAlert;
+
+    fn to_proto(&self) -> Self::ProtoType {
+        weather_message::WeatherAlert {
+            sender: self.sender_name.clone(),
+            description: self.description.clone(),
+            start: self.start,
+            end: self.end,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WeatherResponse {
     pub(crate) lat: f64,
     pub(crate) lon: f64,
@@ -167,6 +190,7 @@ pub struct WeatherResponse {
     pub(crate) minutely: Vec<Minutely>,
     pub(crate) hourly: Vec<Current>,
     pub(crate) daily: Vec<Daily>,
+    pub(crate) alerts: Option<Vec<WeatherAlert>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

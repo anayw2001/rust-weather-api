@@ -121,6 +121,12 @@ pub(crate) async fn do_weather_query(
             .collect(),
         aqi: convert_aqi_to_string(do_aqi_query(&keys, &location).await?),
         geocode: Some(reverse_geocode.to_proto()).into(),
+        alerts: response_mapping
+            .alerts
+            .unwrap_or(vec![])
+            .iter()
+            .map(|a| a.to_proto())
+            .collect(),
         ..Default::default()
     };
 
