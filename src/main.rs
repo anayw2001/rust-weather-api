@@ -53,7 +53,10 @@ async fn greet(name: web::Path<String>) -> impl Responder {
 
 #[get("/v1/api/weather/{latitude}/{longitude}/{units}")]
 #[tracing::instrument(skip(data))]
-async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>, data: web::Data<AppState>) -> impl Responder {
+async fn parse_lat_long(
+    full_query: web::Path<(f64, f64, String)>,
+    data: web::Data<AppState>,
+) -> impl Responder {
     let lat = full_query.0;
     let long = full_query.1;
     let units: Units = full_query.2.to_owned().into();
@@ -70,17 +73,9 @@ async fn parse_lat_long(full_query: web::Path<(f64, f64, String)>, data: web::Da
             longitude: long,
         },
         units,
-        data
+        data,
     )
     .await;
-    // let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str()).await;
-    // if ds.is_err() {
-    //     return Response::new(StatusCode::EXPECTATION_FAILED);
-    // }
-    // let store = ds.unwrap();
-    // let session = Session::for_kv();
-    // let statement = "SELECT * FROM locations";
-    // let res = store.execute(statement, &session, None, false);
     full_proto_response.http_internal_error("could not fetch weather")
 }
 
@@ -110,10 +105,7 @@ async fn reverse_geocode(
     let keys = get_api_key_from_env();
     let resp = geocoding::methods::do_reverse_geocode(&keys, &loc, &data).await;
     match resp {
-        Ok(response) => {
-            let resp = response.to_proto().to_string();
-            resp
-        }
+        Ok(response) => response.to_proto().to_string(),
         Err(_) => String::from("something went wrong"),
     }
 }
@@ -123,24 +115,6 @@ async fn main() -> std::io::Result<()> {
     // install global tracing collector configured based on RUST_LOG env var
     tracing_subscriber::fmt::init();
     info!("Initialized tracing");
-    // Store the SHA-256 hash of creds.json into the database so that we don't run into an issue
-    // where an attacker can introduce a TOCTOU vuln.
-    // let ds = surrealdb::Datastore::new(format!("file://{DB_PATH}").as_str())
-    //     .await
-    //     .map_err(|_| {
-    //         std::io::Error::new(std::io::ErrorKind::Other, "unable to create datastore")
-    //     })?;
-    // let mut transaction = ds
-    //     .transaction(true, true)
-    //     .await
-    //     .expect("unable to start transaction");
-    // // SHA-256 of creds.json
-    // let digest = get_credential_digest();
-    // transaction
-    //     .set("credential_sha", digest.as_slice())
-    //     .await
-    //     .expect("failed to write hash to store");
-    // transaction.commit().await.expect("failed to commit");
 
     info!("Starting HTTP server on port 8080");
     let web_data = web::Data::new(AppState {

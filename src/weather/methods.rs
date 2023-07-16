@@ -28,7 +28,7 @@ pub(crate) async fn do_aqi_query(keys: &APIKey, location: &Location) -> anyhow::
     );
     let result = reqwest::get(owm_query).await?;
     let response_mapping = result.json::<AqiResponse>().await.unwrap();
-    let aqi = response_mapping.list[0].main.aqi.try_into()?;
+    let aqi = response_mapping.list[0].main.aqi;
     Ok(aqi)
 }
 
