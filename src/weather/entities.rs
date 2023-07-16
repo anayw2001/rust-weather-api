@@ -320,6 +320,8 @@ pub enum Description {
     ModerateRain,
     #[serde(rename = "heavy intensity rain")]
     HeavyIntensityRain,
+    #[serde(rename = "very heavy rain")]
+    VeryHeavyRain,
     #[serde(rename = "mist")]
     Mist,
     #[serde(rename = "overcast clouds")]
