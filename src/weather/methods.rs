@@ -3,7 +3,6 @@ use chrono::{Duration, Utc};
 use kiddo::distance::squared_euclidean;
 use protobuf::Message;
 use reqwest::StatusCode;
-use std::mem::drop;
 use tracing::debug;
 
 use crate::{
@@ -39,45 +38,43 @@ pub(crate) async fn do_weather_query(
     units: Units,
     data: web::Data<AppState>,
 ) -> anyhow::Result<Vec<u8>> {
-    // lock kdtree and cached data hashmap
-    let mut kdtree = data.kdtree.lock().unwrap();
-    let mut cached_data = data.cached_data.lock().unwrap();
-    debug!("Locked kdtree and cache hashmap");
+    {
+        // lock kdtree and cached data hashmap
+        let mut kdtree = data.kdtree.lock().unwrap();
+        let mut cached_data = data.cached_data.lock().unwrap();
+        debug!("Locked kdtree and cache hashmap");
 
-    // convert point to 3d coordinates
-    let query = degrees_lat_lng_to_unit_sphere(location.latitude, location.longitude);
-    debug!("Converted lat,lon to 3d coordinates");
+        // convert point to 3d coordinates
+        let query = degrees_lat_lng_to_unit_sphere(location.latitude, location.longitude);
+        debug!("Converted lat,lon to 3d coordinates");
 
-    // query nearest single point
-    let (dist, nearest_idx) = kdtree.nearest_one(&query, &squared_euclidean);
+        // query nearest single point
+        let (dist, nearest_idx) = kdtree.nearest_one(&query, &squared_euclidean);
 
-    // convert euclidean square distance to kilometres
-    let dist_km = unit_sphere_squared_euclidean_to_kilometres(dist);
-    debug!("Distance from given point {}km", dist_km);
-    debug!("Points in kdtree {}", kdtree.size());
+        // convert euclidean square distance to kilometres
+        let dist_km = unit_sphere_squared_euclidean_to_kilometres(dist);
+        debug!("Distance from given point {}km", dist_km);
+        debug!("Points in kdtree {}", kdtree.size());
 
-    // if nearest point is less than 10km away, we can use it
-    if dist_km < 10.0 {
-        debug!("Nearest point is less than 10km");
-        // return result from hashmap
-        if let Some(cached_res) = cached_data.get(&nearest_idx) {
-            debug!("Hashmap contains data for this index");
-            // if data is not yet stale, return it
-            if cached_res.expiry > Utc::now() {
-                debug!("Returned data is not yet stale");
-                return Ok(cached_res.weather.write_to_bytes().unwrap());
-            } else {
-                debug!("Returned data is stale. Clearing cache.");
-                kdtree.remove(&query, nearest_idx);
-                cached_data.remove(&nearest_idx);
+        // if nearest point is less than 10km away, we can use it
+        if dist_km < 10.0 {
+            debug!("Nearest point is less than 10km");
+            // return result from hashmap
+            if let Some(cached_res) = cached_data.get(&nearest_idx) {
+                debug!("Hashmap contains data for this index");
+                // if data is not yet stale, return it
+                if cached_res.expiry > Utc::now() {
+                    debug!("Returned data is not yet stale");
+                    return Ok(cached_res.weather.write_to_bytes().unwrap());
+                } else {
+                    debug!("Returned data is stale. Clearing cache.");
+                    kdtree.remove(&query, nearest_idx);
+                    cached_data.remove(&nearest_idx);
+                }
             }
         }
+        debug!("Nearest point is more than 10kmm querying OWM");
     }
-    debug!("Nearest point is more than 10kmm querying OWM");
-
-    // drop mutexes otherwise geocode will wait endlessly
-    drop(kdtree);
-    drop(cached_data);
 
     // otherwise, query OWM for weather data
     let owm_query = format!(

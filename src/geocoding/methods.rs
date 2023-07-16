@@ -41,19 +41,21 @@ pub(crate) async fn do_reverse_geocode(
     location: &Location,
     data: &web::Data<AppState>,
 ) -> anyhow::Result<ReverseGeocode> {
-    let kdtree = data.kdtree.lock().unwrap();
-    let rev = data.cached_data.lock().unwrap();
+    {
+        let kdtree = data.kdtree.lock().unwrap();
+        let rev = data.cached_data.lock().unwrap();
 
-    let query = degrees_lat_lng_to_unit_sphere(location.latitude, location.longitude);
-    let (dist, nearest_idx) = kdtree.nearest_one(&query, &squared_euclidean);
-    let dist_km = unit_sphere_squared_euclidean_to_kilometres(dist);
-    info!("Distance from given point {}km", dist_km);
-    info!("Points in kdtree {}", kdtree.size());
-    if dist_km < 10.0 {
-        // return result from hashmap
-        if let Some(cached_res) = rev.get(&nearest_idx) {
-            if cached_res.expiry > Utc::now() {
-                return Ok(cached_res.reverse_geocode.clone());
+        let query = degrees_lat_lng_to_unit_sphere(location.latitude, location.longitude);
+        let (dist, nearest_idx) = kdtree.nearest_one(&query, &squared_euclidean);
+        let dist_km = unit_sphere_squared_euclidean_to_kilometres(dist);
+        info!("Distance from given point {}km", dist_km);
+        info!("Points in kdtree {}", kdtree.size());
+        if dist_km < 10.0 {
+            // return result from hashmap
+            if let Some(cached_res) = rev.get(&nearest_idx) {
+                if cached_res.expiry > Utc::now() {
+                    return Ok(cached_res.reverse_geocode.clone());
+                }
             }
         }
     }
