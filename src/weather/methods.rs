@@ -62,14 +62,17 @@ pub(crate) async fn do_weather_query(
             // return result from hashmap
             if let Some(cached_res) = cached_data.get(&nearest_idx) {
                 debug!("Hashmap contains data for this index");
-                // if data is not yet stale, return it
-                if cached_res.expiry > Utc::now() {
-                    debug!("Returned data is not yet stale");
-                    return Ok(cached_res.weather.write_to_bytes().unwrap());
-                } else {
-                    debug!("Returned data is stale. Clearing cache.");
-                    kdtree.remove(&query, nearest_idx);
-                    cached_data.remove(&nearest_idx);
+                // if unit is the same, we can pull from cache.
+                if cached_res.temp_unit == units {
+                    // if data is not yet stale, return it
+                    if cached_res.expiry > Utc::now() {
+                        debug!("Returned data is not yet stale");
+                        return Ok(cached_res.weather.write_to_bytes().unwrap());
+                    } else {
+                        debug!("Returned data is stale. Clearing cache.");
+                        kdtree.remove(&query, nearest_idx);
+                        cached_data.remove(&nearest_idx);
+                    }
                 }
             }
         }
@@ -149,6 +152,7 @@ pub(crate) async fn do_weather_query(
             weather: final_weather.clone(),
             reverse_geocode,
             expiry: Utc::now() + Duration::minutes(15),
+            temp_unit: units,
         },
     );
 

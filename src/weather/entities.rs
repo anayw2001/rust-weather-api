@@ -112,7 +112,8 @@ impl ProtoAdapter for WeatherInfo {
     }
 }
 
-pub(crate) enum Units {
+#[derive(Debug, Eq, PartialEq)]
+pub enum Units {
     Metric,
     Imperial,
     Standard,
@@ -385,4 +386,5 @@ pub struct CachedData {
     pub weather: weather_message::WeatherInfo,
     pub reverse_geocode: ReverseGeocode,
     pub expiry: DateTime<Utc>,
+    pub temp_unit: Units,
 }
