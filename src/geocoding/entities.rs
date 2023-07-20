@@ -17,6 +17,8 @@ pub struct ReverseGeocode {
     pub name: String,
     pub country: String,
     pub state: String,
+    pub latitude: f64,
+    pub longitude: f64,
 }
 
 impl ReverseGeocode {
@@ -25,6 +27,8 @@ impl ReverseGeocode {
             name: "".to_string(),
             country: "".to_string(),
             state: "".to_string(),
+            latitude: 0.0,
+            longitude: 0.0,
         }
     }
 }
@@ -37,6 +41,8 @@ impl ProtoAdapter for ReverseGeocode {
             name: self.name.to_owned(),
             country: self.country.to_owned(),
             state: self.state.to_owned(),
+            latitude: self.latitude,
+            longitude: self.longitude,
             ..Default::default()
         }
     }

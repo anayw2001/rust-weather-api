@@ -85,5 +85,7 @@ pub(crate) async fn do_reverse_geocode(
         name: loc.name.clone(),
         country: loc.country.clone(),
         state: loc.state.clone().unwrap_or(String::from("")),
+        latitude: loc.lat,
+        longitude: loc.lon,
     })
 }

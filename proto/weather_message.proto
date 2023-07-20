@@ -36,6 +36,8 @@ message ReverseGeocode {
   string name = 1;
   string country = 2;
   string state = 3;
+  double latitude = 4;
+  double longitude = 5;
 }
 
 message WeatherAlert {
