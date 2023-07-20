@@ -148,7 +148,7 @@ pub(crate) async fn do_weather_query(
         CachedData {
             weather: final_weather.clone(),
             reverse_geocode,
-            expiry: Utc::now() + Duration::hours(1),
+            expiry: Utc::now() + Duration::minutes(15),
         },
     );
 
