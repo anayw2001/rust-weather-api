@@ -58,7 +58,7 @@ pub(crate) async fn do_weather_query(
 
         // if nearest point is less than 10km away, we can use it
         if dist_km < 10.0 {
-            debug!("Nearest point is less than 10km");
+            debug!("Nearest point is {}km", dist_km);
             // return result from hashmap
             if let Some(cached_res) = cached_data.get(&nearest_idx) {
                 debug!("Hashmap contains data for this index");
