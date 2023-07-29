@@ -1,15 +1,10 @@
 use actix_web::web;
 use anyhow::{anyhow, Ok};
 use chrono::Utc;
-use kiddo::distance::squared_euclidean;
 use reqwest::StatusCode;
 use tracing::info;
 
-use crate::{
-    entities::Location,
-    weather::utils::{degrees_lat_lng_to_unit_sphere, unit_sphere_squared_euclidean_to_kilometres},
-    APIKey, AppState,
-};
+use crate::{entities::Location, weather::utils::haversine, APIKey, AppState};
 
 use super::entities::{DoGeocodeResp, ReverseGeocode};
 
@@ -45,12 +40,11 @@ pub(crate) async fn do_reverse_geocode(
         let kdtree = data.kdtree.lock().unwrap();
         let rev = data.cached_data.lock().unwrap();
 
-        let query = degrees_lat_lng_to_unit_sphere(location.latitude, location.longitude);
-        let (dist, nearest_idx) = kdtree.nearest_one(&query, &squared_euclidean);
-        let dist_km = unit_sphere_squared_euclidean_to_kilometres(dist);
-        info!("Distance from given point {}km", dist_km);
+        let query = [location.latitude, location.longitude];
+        let (dist, nearest_idx) = kdtree.nearest_one(&query, &haversine);
+        info!("Distance from given point {}km", dist);
         info!("Points in kdtree {}", kdtree.size());
-        if dist_km < 10.0 {
+        if dist < 10.0 {
             // return result from hashmap
             if let Some(cached_res) = rev.get(&nearest_idx) {
                 if cached_res.expiry > Utc::now() {

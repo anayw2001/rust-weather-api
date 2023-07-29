@@ -1,6 +1,5 @@
 use actix_web::web;
 use chrono::{Duration, Utc};
-use kiddo::distance::squared_euclidean;
 use protobuf::Message;
 use reqwest::StatusCode;
 use tracing::debug;
@@ -10,16 +9,13 @@ use crate::{
     geocoding,
     weather::{
         entities::{ProtoAdapter, WeatherResponse},
-        utils::{convert_aqi_to_string, unit_sphere_squared_euclidean_to_kilometres},
+        utils::convert_aqi_to_string,
     },
     weather_proto::weather_message,
     APIKey, AppState,
 };
 
-use super::{
-    entities::{AqiResponse, CachedData, Units},
-    utils::degrees_lat_lng_to_unit_sphere,
-};
+use super::entities::{AqiResponse, CachedData, Units};
 
 pub(crate) async fn do_aqi_query(keys: &APIKey, location: &Location) -> anyhow::Result<i64> {
     let owm_query = format!(
@@ -45,20 +41,17 @@ pub(crate) async fn do_weather_query(
         debug!("Locked kdtree and cache hashmap");
 
         // convert point to 3d coordinates
-        let query = degrees_lat_lng_to_unit_sphere(location.latitude, location.longitude);
-        debug!("Converted lat,lon to 3d coordinates");
+        let query = [location.latitude, location.longitude];
 
         // query nearest single point
-        let (dist, nearest_idx) = kdtree.nearest_one(&query, &squared_euclidean);
+        let (dist, nearest_idx) = kdtree.nearest_one(&query, &crate::weather::utils::haversine);
 
-        // convert euclidean square distance to kilometres
-        let dist_km = unit_sphere_squared_euclidean_to_kilometres(dist);
-        debug!("Distance from given point {}km", dist_km);
+        debug!("Distance from given point {}km", dist);
         debug!("Points in kdtree {}", kdtree.size());
 
         // if nearest point is less than 10km away, we can use it
-        if dist_km < 10.0 {
-            debug!("Nearest point is {}km", dist_km);
+        if dist < 10.0 {
+            debug!("Nearest point is {}km", dist);
             // return result from hashmap
             if let Some(cached_res) = cached_data.get(&nearest_idx) {
                 debug!("Hashmap contains data for this index");
@@ -157,10 +150,7 @@ pub(crate) async fn do_weather_query(
     );
 
     // add index to kdtree
-    kdtree.add(
-        &degrees_lat_lng_to_unit_sphere(location.latitude, location.longitude),
-        index,
-    );
+    kdtree.add(&[location.latitude, location.longitude], index);
 
     Ok(final_weather.write_to_bytes().unwrap())
 }

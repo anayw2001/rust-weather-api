@@ -24,7 +24,7 @@ mod weather_proto {
 
 #[derive(Debug)]
 struct AppState {
-    kdtree: Mutex<KdTree<f64, usize, 3, 32, u32>>,
+    kdtree: Mutex<KdTree<f64, usize, 2, 32, u32>>,
     cached_data: Mutex<HashMap<usize, CachedData>>,
 }
 

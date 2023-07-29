@@ -34,32 +34,26 @@ pub(crate) fn convert_id_to_condition(current_weather_id: i64) -> Conditions {
     }
 }
 
-/// converts Earth surface co-ordinates in degrees of latitude and longitude to 3D cartesian coordinates on a unit sphere
-///
-/// We use this when populating our tree, to convert from the `f32` lat/lng data into `f32` (x,y,z) co-ordinates to store in our tree, as well as
-/// allowing us to query the created tree using lat/lng query points.
-pub fn degrees_lat_lng_to_unit_sphere(lat: f64, lng: f64) -> [f64; 3] {
-    // convert from degrees to radians
-    let lat = lat.to_radians();
-    let lng = lng.to_radians();
-
-    // convert from ra/dec to xyz coords on unit sphere
-    [lat.cos() * lng.cos(), lat.cos() * lng.sin(), lat.sin()]
-}
-
 pub const EARTH_RADIUS_IN_KM: f64 = 6371.0;
 
-/// Converts a squared euclidean unit sphere distance (like what we'd get back from
-/// our kd-tree) into kilometres for user convenience.
-#[allow(dead_code)]
-pub fn unit_sphere_squared_euclidean_to_kilometres(sq_euc_dist: f64) -> f64 {
-    sq_euc_dist.sqrt() * EARTH_RADIUS_IN_KM
+// location1 and location2 are [latitude, longitude].
+pub(crate) fn haversine(location1: &[f64; 2], location2: &[f64; 2]) -> f64 {
+    tracing::info!("location1: {:?}, location2: {:?}", location1, location2);
+    let d_lat: f64 = (location2[0] - location1[0]).to_radians();
+    let d_lon: f64 = (location2[1] - location1[1]).to_radians();
+    let lat1: f64 = (location1[0]).to_radians();
+    let lat2: f64 = (location2[0]).to_radians();
+
+    let a: f64 = ((d_lat / 2.0).sin()) * ((d_lat / 2.0).sin())
+        + ((d_lon / 2.0).sin()) * ((d_lon / 2.0).sin()) * (lat1.cos()) * (lat2.cos());
+    let c: f64 = 2.0 * ((a.sqrt()).atan2((1.0 - a).sqrt()));
+
+    EARTH_RADIUS_IN_KM * c
 }
 
-/// Converts a value in km to squared euclidean distance on a unit sphere representing Earth.
-///
-/// This allows us to query using kilometres as distances in our kd-tree.
-#[allow(dead_code)]
-pub fn kilometres_to_unit_sphere_squared_euclidean(km_dist: f64) -> f64 {
-    (km_dist / EARTH_RADIUS_IN_KM).powi(2)
+#[test]
+fn test_haversine_zero_dist() {
+    let loc1 = [37.549521, -121.942765];
+    let loc2 = [37.549521, -121.942765];
+    assert_eq!(haversine(&loc1, &loc2), 0_f64);
 }
